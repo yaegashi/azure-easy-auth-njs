@@ -1,0 +1,10 @@
+services:
+  nginx:
+    build: .
+    environment:
+      NGINX_PORT: "80"
+      NGINX_HOST: localhost
+    ports:
+      - "8080:80"
+    volumes:
+      - ./vol/nginx:/nginx
