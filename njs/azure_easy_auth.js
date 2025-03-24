@@ -1,8 +1,26 @@
 // Decode Azure Easy Auth headers
 // https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-user-identities
 
+// Object to group header name constants.
+const HEADERS = {
+    CLIENT_PRINCIPAL: 'X-MS-CLIENT-PRINCIPAL',
+    CLIENT_PRINCIPAL_ID: 'X-MS-CLIENT-PRINCIPAL-ID',
+    CLIENT_PRINCIPAL_IDP: 'X-MS-CLIENT-PRINCIPAL-IDP',
+    CLIENT_PRINCIPAL_NAME: 'X-MS-CLIENT-PRINCIPAL-NAME',
+};
+
+// Object to group claim type constants.
+const CLAIM_TYPES = {
+    EMAIL: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+    NAME: 'name',
+    OBJECT_ID: 'http://schemas.microsoft.com/identity/claims/objectidentifier',
+    PREFERRED_USERNAME: 'preferred_username',
+    GROUPS: 'groups',
+};
+
+// Get the 'X-MS-CLIENT-PRINCIPAL' header and return its value.
 const getHeaderClientPrincipal = (r) => {
-    const header = r.headersIn['X-MS-CLIENT-PRINCIPAL'];
+    const header = r.headersIn[HEADERS.CLIENT_PRINCIPAL];
     if (!header) {
         r.warn('X-MS-CLIENT-PRINCIPAL header not found');
         return null;
@@ -10,8 +28,9 @@ const getHeaderClientPrincipal = (r) => {
     return header;
 }
 
+// Get the 'X-MS-CLIENT-PRINCIPAL-ID' header and return its value.
 const getHeaderClientPrincipalId = (r) => {
-    const header = r.headersIn['X-MS-CLIENT-PRINCIPAL-ID'];
+    const header = r.headersIn[HEADERS.CLIENT_PRINCIPAL_ID];
     if (!header) {
         r.warn('X-MS-CLIENT-PRINCIPAL-ID header not found');
         return null;
@@ -19,8 +38,9 @@ const getHeaderClientPrincipalId = (r) => {
     return header;
 }
 
+// Get the 'X-MS-CLIENT-PRINCIPAL-IDP' header and return its value.
 const getHeaderClientPrincipalIdp = (r) => {
-    const header = r.headersIn['X-MS-CLIENT-PRINCIPAL-IDP'];
+    const header = r.headersIn[HEADERS.CLIENT_PRINCIPAL_IDP];
     if (!header) {
         r.warn('X-MS-CLIENT-PRINCIPAL-IDP header not found');
         return null;
@@ -28,8 +48,9 @@ const getHeaderClientPrincipalIdp = (r) => {
     return header;
 }
 
+// Get the 'X-MS-CLIENT-PRINCIPAL-NAME' header and return its value.
 const getHeaderClientPrincipalName = (r) => {
-    const header = r.headersIn['X-MS-CLIENT-PRINCIPAL-NAME'];
+    const header = r.headersIn[HEADERS.CLIENT_PRINCIPAL_NAME];
     if (!header) {
         r.warn('X-MS-CLIENT-PRINCIPAL-NAME header not found');
         return null;
@@ -37,6 +58,7 @@ const getHeaderClientPrincipalName = (r) => {
     return header;
 }
 
+// Decode and parse the 'X-MS-CLIENT-PRINCIPAL' header into a JSON object.
 const decodeHeaderClientPrincipal = (r) => {
     const header = getHeaderClientPrincipal(r);
     if (!header) {
@@ -52,6 +74,7 @@ const decodeHeaderClientPrincipal = (r) => {
     }
 };
 
+// Extract claims from the decoded client principal and return them as an object.
 const getClaims = (r) => {
     const clientPrincipal = decodeHeaderClientPrincipal(r);
     if (!clientPrincipal || !clientPrincipal.claims || !Array.isArray(clientPrincipal.claims)) {
@@ -69,6 +92,7 @@ const getClaims = (r) => {
     return claimsObj;
 };
 
+// Retrieve all values for a specific claim type from the claims object.
 const getClaimValues = (r, claimType) => {
     const claimsObj = getClaims(r);
     if (!claimsObj || !claimsObj[claimType]) {
@@ -77,39 +101,49 @@ const getClaimValues = (r, claimType) => {
     return claimsObj[claimType];
 };
 
+// Retrieve the first value for a specific claim type from the claims object.
 const getClaimValue = (r, claimType) => {
     const values = getClaimValues(r, claimType);
     return values.length > 0 ? values[0] : null;
 };
 
+// Alias for getClaimValue to retrieve a specific claim value.
 const getClaim = getClaimValue;
 
+// Retrieve the email address claim value.
 const getClaimEmail = (r) => {
-    return getClaimValue(r, 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress');
+    return getClaimValue(r, CLAIM_TYPES.EMAIL);
 };
 
+// Retrieve the name claim value.
 const getClaimName = (r) => {
-    return getClaimValue(r, 'name');
+    return getClaimValue(r, CLAIM_TYPES.NAME);
 };
 
+// Retrieve the object identifier claim value.
 const getClaimObjectId = (r) => {
-    return getClaimValue(r, 'http://schemas.microsoft.com/identity/claims/objectidentifier');
+    return getClaimValue(r, CLAIM_TYPES.OBJECT_ID);
 };
 
+// Retrieve the preferred username claim value.
 const getClaimPreferredUsername = (r) => {
-    return getClaimValue(r, 'preferred_username');
+    return getClaimValue(r, CLAIM_TYPES.PREFERRED_USERNAME);
 };
 
+// Retrieve all group claim values.
 const getClaimGroups = (r) => {
-    return getClaimValues(r, 'groups');
+    return getClaimValues(r, CLAIM_TYPES.GROUPS);
 };
 
+// Check if a specific group ID exists in the group claims.
 const hasClaimGroup = (r, groupId) => {
     const groups = getClaimGroups(r);
     return groups.includes(groupId);
 };
 
 export default {
+    HEADERS,
+    CLAIM_TYPES,
     getHeaderClientPrincipal,
     getHeaderClientPrincipalId,
     getHeaderClientPrincipalName,
