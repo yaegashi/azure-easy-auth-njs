@@ -76,29 +76,37 @@ const decodeHeaderClientPrincipal = (r) => {
 
 // Extract claims from the decoded client principal and return them as an object.
 const getClaims = (r) => {
+    if (r.cachedClaims !== undefined) {
+        return r.cachedClaims;
+    }
+
     const clientPrincipal = decodeHeaderClientPrincipal(r);
     if (!clientPrincipal || !clientPrincipal.claims || !Array.isArray(clientPrincipal.claims)) {
+        r.cachedClaims = null;
         return null;
     }
-    const claimsObj = {};
+
+    const claims = {};
     clientPrincipal.claims.forEach(claim => {
         if (claim.typ && claim.val !== undefined) {
-            if (!claimsObj[claim.typ]) {
-                claimsObj[claim.typ] = [];
+            if (!claims[claim.typ]) {
+                claims[claim.typ] = [];
             }
-            claimsObj[claim.typ].push(claim.val);
+            claims[claim.typ].push(claim.val);
         }
     });
-    return claimsObj;
+
+    r.cachedClaims = claims;
+    return claims;
 };
 
 // Retrieve all values for a specific claim type from the claims object.
 const getClaimValues = (r, claimType) => {
-    const claimsObj = getClaims(r);
-    if (!claimsObj || !claimsObj[claimType]) {
+    const claims = getClaims(r);
+    if (!claims || !claims[claimType]) {
         return [];
     }
-    return claimsObj[claimType];
+    return claims[claimType];
 };
 
 // Retrieve the first value for a specific claim type from the claims object.
