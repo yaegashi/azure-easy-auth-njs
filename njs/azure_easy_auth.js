@@ -60,53 +60,48 @@ const getClaims = (r) => {
     const claimsObj = {};
     clientPrincipal.claims.forEach(claim => {
         if (claim.typ && claim.val !== undefined) {
-            if (claimsObj[claim.typ]) {
-                if (Array.isArray(claimsObj[claim.typ])) {
-                    claimsObj[claim.typ].push(claim.val);
-                } else {
-                    claimsObj[claim.typ] = [claimsObj[claim.typ], claim.val];
-                }
-            } else {
-                claimsObj[claim.typ] = claim.val;
+            if (!claimsObj[claim.typ]) {
+                claimsObj[claim.typ] = [];
             }
+            claimsObj[claim.typ].push(claim.val);
         }
     });
     return claimsObj;
 };
 
-const getClaim = (r, claimType) => {
+const getClaimValues = (r, claimType) => {
     const claimsObj = getClaims(r);
-    if (!claimsObj || claimsObj[claimType] === undefined) {
-        return null;
+    if (!claimsObj || !claimsObj[claimType]) {
+        return [];
     }
     return claimsObj[claimType];
 };
 
+const getClaimValue = (r, claimType) => {
+    const values = getClaimValues(r, claimType);
+    return values.length > 0 ? values[0] : null;
+};
+
+const getClaim = getClaimValue;
+
 const getClaimEmail = (r) => {
-    return getClaim(r, 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress');
+    return getClaimValue(r, 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress');
 };
 
 const getClaimName = (r) => {
-    return getClaim(r, 'name');
+    return getClaimValue(r, 'name');
 };
 
 const getClaimObjectId = (r) => {
-    return getClaim(r, 'http://schemas.microsoft.com/identity/claims/objectidentifier');
+    return getClaimValue(r, 'http://schemas.microsoft.com/identity/claims/objectidentifier');
 };
 
 const getClaimPreferredUsername = (r) => {
-    return getClaim(r, 'preferred_username');
+    return getClaimValue(r, 'preferred_username');
 };
 
 const getClaimGroups = (r) => {
-    const groups = getClaim(r, 'groups');
-    if (Array.isArray(groups)) {
-        return groups;
-    }
-    if (groups) {
-        return [groups];
-    }
-    return [];
+    return getClaimValues(r, 'groups');
 };
 
 const hasClaimGroup = (r, groupId) => {
@@ -122,6 +117,8 @@ export default {
     decodeHeaderClientPrincipal,
     getClaims,
     getClaim,
+    getClaimValue,
+    getClaimValues,
     getClaimEmail,
     getClaimName,
     getClaimObjectId,
