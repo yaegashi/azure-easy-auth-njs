@@ -76,9 +76,33 @@ It's [docker/default.conf.template](docker/default.conf.template) and copied to 
 server {
     listen ${NGINX_PORT} default_server;
     server_name _;
-    location / {
-        root /nginx/sites/default;
-        index index.html index.htm;
+
+    root /nginx/sites/default;
+    index index.html index.htm;
+}
+```
+
+### Secure Path Configuration
+
+The following NGINX configuration demonstrates how to extract `$secured_principal` (GUID) from a request path like `/secure/$secured_principal/...`, combine it with `$super_principal`, and use the `isAuthorizedPrincipals` function to determine access permissions:
+
+```
+server {
+    listen ${NGINX_PORT};
+    server_name _;
+
+    root /nginx/sites/default;
+    index index.html index.htm;
+
+    js_import auth from azure_easy_auth.js;
+    js_set $is_authorized auth.isAuthorizedPrincipals;
+    set $super_principal "123e4567-e89b-12d3-a456-426614174000";
+
+    location ~ ^/secure/(?<secured_principal>[^/]+) {
+        set $authorized_principals "$secured_principal,$super_principal";
+        if ($is_authorized = "0") {
+            return 403 "Forbidden";
+        }
     }
 }
 ```
@@ -97,9 +121,7 @@ map $host $site_name {
 server {
     listen ${NGINX_PORT};
     server_name .${NGINX_HOST};
-    location / {
-        root /nginx/sites/$site_name;
-    }
+    root /nginx/sites/$site_name;
 }
 
 server {

@@ -149,6 +149,23 @@ const hasClaimGroup = (r, groupId) => {
     return groups.includes(groupId);
 };
 
+// Check if any of the GUIDs in $authorized_principals exist in the object ID or group claims and return "1" or "0".
+const isAuthorizedPrincipals = (r) => {
+    const authorizedPrincipals = r.variables.authorized_principals;
+    if (!authorizedPrincipals) {
+        r.warn('$authorized_principals variable is not set');
+        return "0";
+    }
+    const authorizedPrincipalList = authorizedPrincipals.toLowerCase().split(',').map(id => id.trim()).filter(id => id !== '');
+    const groupIds = getClaimGroups(r)
+    const objectId = getClaimObjectId(r)
+    if (objectId) {
+        groupIds.push(objectId);
+    }
+    const isAuthorized = authorizedPrincipalList.some(id => groupIds.includes(id));
+    return isAuthorized ? "1" : "0";
+};
+
 export default {
     HEADERS,
     CLAIM_TYPES,
@@ -167,4 +184,5 @@ export default {
     getClaimPreferredUsername,
     getClaimGroups,
     hasClaimGroup,
+    isAuthorizedPrincipals,
 };
