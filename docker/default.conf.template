@@ -3,5 +3,4 @@ server {
     server_name _;
 
     root /nginx/sites/default;
-    index index.html index.htm;
 }

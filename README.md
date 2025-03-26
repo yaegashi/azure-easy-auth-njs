@@ -78,13 +78,12 @@ server {
     server_name _;
 
     root /nginx/sites/default;
-    index index.html index.htm;
 }
 ```
 
 ### Secure Path Configuration
 
-The following NGINX configuration demonstrates how to extract `$secured_principal` (GUID) from a request path like `/secure/$secured_principal/...`, combine it with `$super_principal`, and use the `isAuthorizedPrincipals` function to determine access permissions:
+Put the following in `/nginx/template/default.conf.template`:
 
 ```
 server {
@@ -92,7 +91,29 @@ server {
     server_name _;
 
     root /nginx/sites/default;
-    index index.html index.htm;
+
+    js_import auth from azure_easy_auth.js;
+    js_set $is_authorized auth.isAuthorizedPrincipals;
+
+    location ~ ^/secure/ {
+        set $authorized_principals "98a7b6c5-d4e3-21f0-9g8h-765432109876";
+        if ($is_authorized = "0") {
+            return 403 "Forbidden";
+        }
+    }
+}
+```
+
+This configuration secures paths beginning with `/secure/` using the `isAuthorizedPrincipals` function. The function takes the `$authorized_principals` NGINX variable as input, which can contain multiple comma-separated GUIDs. The function returns `"1"` if any of these GUIDs match the authenticated user's object ID or group claims, or `"0"` if no match is found. Access is denied with a 403 response when the function returns `"0"`.
+
+### Dynamic Secure Path Configuration
+
+```
+server {
+    listen ${NGINX_PORT};
+    server_name _;
+
+    root /nginx/sites/default;
 
     js_import auth from azure_easy_auth.js;
     js_set $is_authorized auth.isAuthorizedPrincipals;
@@ -107,9 +128,10 @@ server {
 }
 ```
 
-### Multiple Subdomain Configuration
+This configuration demonstrates dynamic permission setting based on the request path. It extracts a `$secured_principal` (GUID) from paths like `/secure/{GUID}/...` and combines it with an always-authorized `$super_principal` to create the `$authorized_principals` variable.
+Access is granted only if the user's object ID or group claims match either the `$secured_principal` or the `$super_principal`.
 
-Put the following in `/nginx/template/default.conf.template`:
+### Multiple Subdomain Configuration
 
 ```
 map $host $site_name {
@@ -121,7 +143,19 @@ map $host $site_name {
 server {
     listen ${NGINX_PORT};
     server_name .${NGINX_HOST};
+
     root /nginx/sites/$site_name;
+
+    js_import auth from azure_easy_auth.js;
+    js_set $is_authorized auth.isAuthorizedPrincipals;
+
+    if ($site_name ~* ^pr-review-) {
+        # Set PR reviewer's group principal
+        set $authorized_principals "85b93f9c-7d2e-4a80-b71c-425ae32f1cc1";
+        if ($is_authorized = "0") {
+            return 403 "Forbidden";
+        }
+    }
 }
 
 server {
@@ -131,10 +165,11 @@ server {
 }
 ```
 
-When `NGINX_HOST=example.com`, this configuration behaves as follows:
+This configuration serves different content based on subdomains. When `NGINX_HOST=example.com`, it behaves as follows:
 
-|`$host`|It serves (`$root`)|
-|-|-|
-|`example.com`|`/nginx/sites/default`|
-|`blog.example.com`|`/nginx/sites/blog`|
-|`other.example.net`|404 Not Found|
+- Access to the main domain (`example.com`) serves content from `/nginx/sites/default`
+- Regular subdomains (e.g., `blog.example.com`) serve content from their corresponding subdirectories (`/nginx/sites/blog`)
+- Pull request review subdomains (e.g., `pr-review-123.example.com`) are protected and only accessible by authenticated users in the group `85b93f9c-7d2e-4a80-b71c-425ae32f1cc1`
+- Access to any undefined domain (e.g., `example.net`) returns a 404 error
+
+This pattern is particularly useful in team development environments where you might create dedicated preview environments for each pull request, accessible only to specific reviewers.
